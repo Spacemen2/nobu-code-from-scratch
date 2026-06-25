@@ -94,27 +94,36 @@ class Head(nn.Module):
         self.value = nn.Linear(n_embd, head_size, bias=False)
         #--------------------------------------------------------
         
-        #----------因果掩码（注册为buffer因为不需要训练）-------------
-        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        #----------因果掩码（注册为buffer因为不需要训练）-------------（因为使用flash attn，以下不需要）
+        #self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
         #--------------------------------------------------------
 
         #--------------防止过拟合，随机丢弃一些注意力权重--------------
-        self.dropout = nn.Dropout(dropout)
+        #self.dropout = nn.Dropout(dropout)
         #--------------------------------------------------------
+        self.dropout_p = dropout
     
     def forward(self, x):
         B, T, C = x.shape
         k = self.key(x)
         q = self.query(x)
-        #--------核心公式实现-------------------------------------- 
-        wei = q @ k.transpose(-2, -1) * k.shape[-1]**-0.5 #注意力缩放，防止点积数值过大，导致softmax进入梯度消失区
-        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))# (B, T, hs) @ (B, hs, T) -> (B, T, T)
-        wei = F.softmax(wei, dim=-1) 
-        wei = self.dropout(wei)
-
         v = self.value(x)
-        out = wei @ v
+        #--------核心公式实现-------------------------------------- 
+        #wei = q @ k.transpose(-2, -1) * k.shape[-1]**-0.5 #注意力缩放，防止点积数值过大，导致softmax进入梯度消失区
+        #wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))# (B, T, hs) @ (B, hs, T) -> (B, T, T)
+        #wei = F.softmax(wei, dim=-1) 
+        #wei = self.dropout(wei)
+        #v = self.value(x)
+        #out = wei @ v
         #---------------------------------------------------------
+
+        #-----------Flash attn-----------------------------------
+        out = F.scaled_dot_product_attention(
+            q, k, v,
+            dropout_p=self.dropout_p if self.training else 0.0,
+            is_causal=True        
+            )
+        #--------------------------------------------------------
         return out
         
 #----------创建多个并行的attention head-----------------------------
