@@ -5,7 +5,7 @@ import math
 from contextlib import nullcontext
 import time
 # hyperparameters
-batch_size = 64 # how many independent sequences will we process in parallel?
+batch_size = 256 # how many independent sequences will we process in parallel?
 block_size = 256 # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
@@ -106,10 +106,10 @@ class Head(nn.Module):
         B, T, C = x.shape
         k = self.key(x)
         q = self.query(x)
-        #--------核心公式实现--------------------------------------
-        wei = q @ k.transpose(-2, -1) * k.shape[-1]**-0.5
+        #--------核心公式实现-------------------------------------- 
+        wei = q @ k.transpose(-2, -1) * k.shape[-1]**-0.5 #注意力缩放，防止点积数值过大，导致softmax进入梯度消失区
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))# (B, T, hs) @ (B, hs, T) -> (B, T, T)
-        wei = F.softmax(wei, dim=-1)
+        wei = F.softmax(wei, dim=-1) 
         wei = self.dropout(wei)
 
         v = self.value(x)
