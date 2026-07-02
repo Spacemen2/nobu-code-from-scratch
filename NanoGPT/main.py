@@ -27,7 +27,7 @@ ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=
 torch.backends.cuda.matmul.allow_tf32 = True #加上 TF32 白捡加速
 torch.backends.cudnn.allow_tf32 = True
 
-scaler = torch.cuda.amp.GradScaler(enabled=(dtype == 'float16'))
+scaler = torch.amp.GradScaler(enabled=(dtype == 'float16'))
 #-------------------------------------------------------------------
 
 torch.manual_seed(1337)
