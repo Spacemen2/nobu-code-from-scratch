@@ -98,7 +98,9 @@ class BlockManager:
         for i in range(num_cached_blocks, seq.num_blocks):
             seq.block_table.append(self._allocate_block())
         seq.num_cached_tokens = num_cached_blocks * self.block_size
-
+        
+#————————————————释放内存——————————————————————————————————————————————————
+#一个请求(比如用户的一段对话)生成完、结束了,它占的那些 KV cache 显存就没用了。如果不释放,显存很快就满,新请求进不来
     def deallocate(self, seq: Sequence):
         for block_id in reversed(seq.block_table):
             block = self.blocks[block_id]
@@ -107,6 +109,7 @@ class BlockManager:
                 self._deallocate_block(block_id)
         seq.num_cached_tokens = 0
         seq.block_table.clear()
+#-------------------------------------------------------------------------
 
     def can_append(self, seq: Sequence) -> bool:
         return len(self.free_block_ids) >= (len(seq) % self.block_size == 1)
